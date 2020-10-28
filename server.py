@@ -134,7 +134,7 @@ def get_prices():
     cursor.execute("SELECT ticker FROM Fundamentals")
     tickers = {record[0] for record in cursor}
     url1 = 'https://api.polygon.io/v2/aggs/ticker/'
-    url2 = '/prev?apiKey=AKZYR3WO7U8B33F3O582'
+    url2 = '/range/1/day/2020-09-03/2020-10-23?sort=asc&apiKey=AKZYR3WO7U8B33F3O582'
     count = 0
     with concurrent.futures.ThreadPoolExecutor(max_workers=16) as executor:
         futures = []
@@ -143,13 +143,15 @@ def get_prices():
         with open ('price_data.csv', 'w+', newline='') as csv_file:
             write = csv.writer(csv_file)
             for future in concurrent.futures.as_completed(futures):
-                resp = future.result()['results']
+                resp = future.result()
+                curr_ticker = resp['ticker']
+                resp = resp['results']
                 if not resp or len(resp) == 0:
                     continue
-                resp = resp[0]
-                db_timestamp_format = datetime.datetime.utcfromtimestamp(int(resp['t'])/1000).strftime('%Y-%m-%d %H:%M:%S')
-                prices = [resp['T'], db_timestamp_format, resp['o'], resp['c'], resp['h'], resp['l'], resp['v']]
-                write.writerow(prices)
+                for day in resp:
+                    db_timestamp_format = datetime.datetime.utcfromtimestamp(int(day['t'])/1000).strftime('%Y-%m-%d %H:%M:%S')
+                    prices = [curr_ticker, db_timestamp_format, day['o'], day['c'], day['h'], day['l'], day['v']]
+                    write.writerow(prices)
                 print(count)
                 count += 1
         csv_file = open('price_data.csv', 'r')

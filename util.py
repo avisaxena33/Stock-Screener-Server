@@ -1,8 +1,10 @@
-''' Helper functions that are not necessarily related to server-side code '''
+''' Helper functions for endpoints '''
 
+import json
+import csv
+import os
 import datetime
 import pandas as pd
-import json
 
 UTC_MARKET_OPEN = '13:30:00'
 UTC_MARKET_CLOSE = '20:00:00'
@@ -45,3 +47,41 @@ def polygon_get_request_multithreaded(url, session):
     if resp.ok:
         return json.loads(resp.text)
     return None
+
+def add_daily_price_data(ticker, session, connection, cursor):
+    url = 'https://api.polygon.io/v2/aggs/ticker/' + ticker + '/range/1/day/' + get_date_n_days_ago(252) + '/' + get_current_date() + '?sort=asc&apiKey=AKZYR3WO7U8B33F3O582'
+    resp = polygon_get_request_multithreaded(url, session)
+    if not resp or len(resp['results']) == 0:
+        return None
+    with open ('new_daily_price_data.csv', 'w+', newline='') as csv_file:
+        write = csv.writer(csv_file)
+        curr_ticker = resp['ticker']
+        for day in resp['results']:
+            db_date_format = epoch_to_date_format(day['t'])
+            prices = [curr_ticker, db_date_format, day['o'], day['c'], day['h'], day['l'], day['v']]
+            write.writerow(prices)
+    csv_file = open('new_daily_price_data.csv', 'r')
+    cursor.copy_from(csv_file, 'Daily_Prices', sep=',', columns=('ticker', 'date', 'open', 'close', 'high', 'low', 'volume'))
+    csv_file.close()
+    os.remove('new_daily_price_data.csv')
+    return 'SUCCESSFULLY ADDED DAILY PRICE DATA FOR' + ' ' + ticker
+
+def add_minute_price_data(ticker, session, connection, cursor):
+    url = 'https://api.polygon.io/v2/aggs/ticker/' + ticker + '/range/1/minute/' + get_date_n_days_ago(1) + '/' + get_date_n_days_ago(1) + '?sort=asc&apiKey=AKZYR3WO7U8B33F3O582'
+    resp = polygon_get_request_multithreaded(url, session)
+    if not resp or len(resp['results']) == 0:
+        return None
+    count = 0
+    with open ('new_minute_price_data.csv', 'w+', newline='') as csv_file:
+        write = csv.writer(csv_file)
+        curr_ticker = resp['ticker']
+        for minute in resp['results']:
+            if within_trading_hours(minute['t']):
+                db_timestamp_format = epoch_to_timestamp_format(minute['t'])
+                prices = [curr_ticker, db_timestamp_format, minute['o'], minute['c'], minute['h'], minute['l'], minute['v']]
+                write.writerow(prices)
+    csv_file = open('new_minute_price_data.csv', 'r')
+    cursor.copy_from(csv_file, 'Minute_Prices', sep=',', columns=('ticker', 'timestamp', 'open', 'close', 'high', 'low', 'volume'))
+    csv_file.close()
+    os.remove('new_minute_price_data.csv')
+    return 'SUCCESSFULLY ADDED MINUTE PRICE DATA FOR' + ' ' + ticker

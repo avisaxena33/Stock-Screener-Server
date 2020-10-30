@@ -2,13 +2,9 @@ import sys
 import boto3
 import psycopg2
 from flask import Flask
-from polygon import RESTClient
-import requests 
-import json
-import concurrent.futures
-import csv
-import os
 import util
+import requests 
+import concurrent.futures
 
 # Flask class reference
 app = Flask(__name__)
@@ -41,44 +37,6 @@ def connect_to_postgres():
 def hello():
     return 'hello'
 
-def add_daily_price_data(ticker, connection, cursor):
-    url = 'https://api.polygon.io/v2/aggs/ticker/' + ticker + '/range/1/day/' + util.get_date_n_days_ago(252) + '/' + util.get_current_date() + '?sort=asc&apiKey=AKZYR3WO7U8B33F3O582'
-    resp = util.polygon_get_request_multithreaded(url, session)
-    if not resp or len(resp['results']) == 0:
-        return None
-    with open ('new_daily_price_data.csv', 'w+', newline='') as csv_file:
-        write = csv.writer(csv_file)
-        curr_ticker = resp['ticker']
-        for day in resp['results']:
-            db_date_format = util.epoch_to_date_format(day['t'])
-            prices = [curr_ticker, db_date_format, day['o'], day['c'], day['h'], day['l'], day['v']]
-            write.writerow(prices)
-    csv_file = open('new_daily_price_data.csv', 'r')
-    cursor.copy_from(csv_file, 'Daily_Prices', sep=',', columns=('ticker', 'date', 'open', 'close', 'high', 'low', 'volume'))
-    csv_file.close()
-    os.remove('new_daily_price_data.csv')
-    return 'SUCCESSFULLY ADDED DAILY PRICE DATA FOR' + ' ' + ticker
-
-def add_minute_price_data(ticker, connection, cursor):
-    url = 'https://api.polygon.io/v2/aggs/ticker/' + ticker + '/range/1/minute/' + util.get_date_n_days_ago(1) + '/' + util.get_date_n_days_ago(1) + '?sort=asc&apiKey=AKZYR3WO7U8B33F3O582'
-    resp = util.polygon_get_request_multithreaded(url, session)
-    if not resp or len(resp['results']) == 0:
-        return None
-    count = 0
-    with open ('new_minute_price_data.csv', 'w+', newline='') as csv_file:
-        write = csv.writer(csv_file)
-        curr_ticker = resp['ticker']
-        for minute in resp['results']:
-            if util.within_trading_hours(minute['t']):
-                db_timestamp_format = util.epoch_to_timestamp_format(minute['t'])
-                prices = [curr_ticker, db_timestamp_format, minute['o'], minute['c'], minute['h'], minute['l'], minute['v']]
-                write.writerow(prices)
-    csv_file = open('new_minute_price_data.csv', 'r')
-    cursor.copy_from(csv_file, 'Minute_Prices', sep=',', columns=('ticker', 'timestamp', 'open', 'close', 'high', 'low', 'volume'))
-    csv_file.close()
-    os.remove('new_minute_price_data.csv')
-    return 'SUCCESSFULLY ADDED MINUTE PRICE DATA FOR' + ' ' + ticker
-
 # Tracks a new ticker if not already tracked and adds price data
 @app.route('/add_tracker/<string:ticker>')
 def add_tracker(ticker):
@@ -89,7 +47,7 @@ def add_tracker(ticker):
         cursor.execute("CALL add_tracker(%s);", (ticker,))
     except Exception as e:
         return str(e)
-    if not add_daily_price_data(ticker, connection, cursor) or not add_minute_price_data(ticker, connection, cursor):
+    if not util.add_daily_price_data(ticker, session, connection, cursor) or not util.add_minute_price_data(ticker, session, connection, cursor):
         cursor.close()
         connection.close()
         return 'COULD NOT ADD PRICE DATA FOR' + ' ' + ticker
@@ -113,6 +71,7 @@ def remove_tracker(ticker):
     connection.close()
     return 'Successfully removed the selected ticker!'
 
+# NEED TO CHANGE THIS TO RETURN THE CORRECT PRICE DATA (HASN'T BEEN DECIDED YET?)
 # Grabs all currently tracked stocks most recently updated price data
 @app.route('/get_trackers')
 def get_trackers():

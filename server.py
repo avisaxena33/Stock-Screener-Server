@@ -5,10 +5,10 @@ from flask import Flask
 from polygon import RESTClient
 import requests 
 import json
-import datetime
 import concurrent.futures
 import csv
 import os
+import util
 
 # Flask class reference
 app = Flask(__name__)
@@ -41,7 +41,45 @@ def connect_to_postgres():
 def hello():
     return 'hello'
 
-# Tracks a new ticker if not already tracked
+def add_daily_price_data(ticker, connection, cursor):
+    url = 'https://api.polygon.io/v2/aggs/ticker/' + ticker + '/range/1/day/' + util.get_date_n_days_ago(252) + '/' + util.get_current_date() + '?sort=asc&apiKey=AKZYR3WO7U8B33F3O582'
+    resp = util.polygon_get_request_multithreaded(url, session)
+    if not resp or len(resp['results']) == 0:
+        return None
+    with open ('new_daily_price_data.csv', 'w+', newline='') as csv_file:
+        write = csv.writer(csv_file)
+        curr_ticker = resp['ticker']
+        for day in resp['results']:
+            db_date_format = util.epoch_to_date_format(day['t'])
+            prices = [curr_ticker, db_date_format, day['o'], day['c'], day['h'], day['l'], day['v']]
+            write.writerow(prices)
+    csv_file = open('new_daily_price_data.csv', 'r')
+    cursor.copy_from(csv_file, 'Daily_Prices', sep=',', columns=('ticker', 'date', 'open', 'close', 'high', 'low', 'volume'))
+    csv_file.close()
+    os.remove('new_daily_price_data.csv')
+    return 'SUCCESSFULLY ADDED DAILY PRICE DATA FOR' + ' ' + ticker
+
+def add_minute_price_data(ticker, connection, cursor):
+    url = 'https://api.polygon.io/v2/aggs/ticker/' + ticker + '/range/1/minute/' + util.get_date_n_days_ago(1) + '/' + util.get_date_n_days_ago(1) + '?sort=asc&apiKey=AKZYR3WO7U8B33F3O582'
+    resp = util.polygon_get_request_multithreaded(url, session)
+    if not resp or len(resp['results']) == 0:
+        return None
+    count = 0
+    with open ('new_minute_price_data.csv', 'w+', newline='') as csv_file:
+        write = csv.writer(csv_file)
+        curr_ticker = resp['ticker']
+        for minute in resp['results']:
+            if util.within_trading_hours(minute['t']):
+                db_timestamp_format = util.epoch_to_timestamp_format(minute['t'])
+                prices = [curr_ticker, db_timestamp_format, minute['o'], minute['c'], minute['h'], minute['l'], minute['v']]
+                write.writerow(prices)
+    csv_file = open('new_minute_price_data.csv', 'r')
+    cursor.copy_from(csv_file, 'Minute_Prices', sep=',', columns=('ticker', 'timestamp', 'open', 'close', 'high', 'low', 'volume'))
+    csv_file.close()
+    os.remove('new_minute_price_data.csv')
+    return 'SUCCESSFULLY ADDED MINUTE PRICE DATA FOR' + ' ' + ticker
+
+# Tracks a new ticker if not already tracked and adds price data
 @app.route('/add_tracker/<string:ticker>')
 def add_tracker(ticker):
     ticker = ticker.upper()
@@ -51,12 +89,16 @@ def add_tracker(ticker):
         cursor.execute("CALL add_tracker(%s);", (ticker,))
     except Exception as e:
         return str(e)
+    if not add_daily_price_data(ticker, connection, cursor) or not add_minute_price_data(ticker, connection, cursor):
+        cursor.close()
+        connection.close()
+        return 'COULD NOT ADD PRICE DATA FOR' + ' ' + ticker
     connection.commit()
     cursor.close()
     connection.close()
     return 'Successfully added the selected ticker!'
 
-# Removes a ticker that is being tracked
+# Removes a ticker that is being tracked alongisde all the price data for that ticker
 @app.route('/remove_tracker/<string:ticker>')
 def remove_tracker(ticker):
     ticker = ticker.upper()
@@ -92,62 +134,3 @@ def get_trackers():
     connection.close()
     return {'tracked': tracked_stocks}
 
-# returns current date string in YYYY-MM-DD format
-def get_current_date():
-    return datetime.datetime.today().strftime('%Y-%m-%d')
-
-# returns date fifty days ago from today in YYYY-MM-DD format
-def get_date_fifty_days_ago():
-    current_date = datetime.datetime.now()
-    delta = datetime.timedelta(days = 50)
-    fifty_days_ago = current_date - delta
-    return fifty_days_ago.strftime('%Y-%m-%d')
-
-# helper function for get request multithreading
-def get_price_tmp(url):
-    resp = session.get(url)
-    return json.loads(resp.text)
-
-# function that inserts new closing price data for each stock in Prices table and also removes any entries outside of 50 days
-@app.route('/daily_update_prices')
-def daily_update_prices():
-    tickers = set()
-    connection = connect_to_postgres()
-    cursor = connection.cursor()
-    try:
-        cursor.execute("CALL remove_old_price_data();", ())
-    except Exception as e:
-        return str(e)
-    cursor.execute("SELECT DISTINCT ticker FROM Prices")
-    tickers = {record[0] for record in cursor}
-    url1 = 'https://api.polygon.io/v2/aggs/ticker/'
-    url2 = '/prev?apiKey=AKZYR3WO7U8B33F3O582'
-    count = 0
-    csv_unique_name = get_current_date() + '_price_data.csv'
-    with concurrent.futures.ThreadPoolExecutor(max_workers=16) as executor:
-        futures = []
-        for ticker in tickers:
-            futures.append(executor.submit(get_price_tmp, url1+ticker+url2))
-        with open ('price_data.csv', 'w+', newline='') as csv_file:
-            write = csv.writer(csv_file)
-            for future in concurrent.futures.as_completed(futures):
-                resp = future.result()
-                if not resp or resp['status'] != 'OK' or len(resp['results']) == 0:
-                    continue
-                resp = resp['results'][0]
-                db_timestamp_format = datetime.datetime.utcfromtimestamp(int(resp['t'])/1000).strftime('%Y-%m-%d')
-                # handles case where current day's closed is not returned from api for whatever reason
-                if db_timestamp_format != get_current_date():
-                    continue
-                prices = [resp['T'], db_timestamp_format, resp['o'], resp['c'], resp['h'], resp['l'], resp['v']]
-                write.writerow(prices)
-                print(count)
-                count += 1
-        csv_file = open('price_data.csv', 'r')
-        cursor.copy_from(csv_file, 'Prices', sep=',', columns=('ticker', 'timestamp', 'open', 'close', 'high', 'low', 'volume'))
-        csv_file.close()
-    os.remove('price_data.csv')
-    connection.commit()
-    cursor.close()
-    connection.close()
-    return 'SUCCESSFULLY UPDATED PRICES UP TO' + ' ' + get_current_date()

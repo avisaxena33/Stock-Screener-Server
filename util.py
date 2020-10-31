@@ -49,7 +49,7 @@ def polygon_get_request_multithreaded(url, session):
     return None
 
 def add_daily_price_data(ticker, session, connection, cursor):
-    url = 'https://api.polygon.io/v2/aggs/ticker/' + ticker + '/range/1/day/' + get_date_n_days_ago(252) + '/' + get_current_date() + '?sort=asc&apiKey=AKZYR3WO7U8B33F3O582'
+    url = 'https://api.polygon.io/v2/aggs/ticker/' + ticker + '/range/1/day/' + get_date_n_days_ago(365) + '/' + get_current_date() + '?sort=asc&apiKey=AKZYR3WO7U8B33F3O582'
     resp = polygon_get_request_multithreaded(url, session)
     if not resp or len(resp['results']) == 0:
         return None

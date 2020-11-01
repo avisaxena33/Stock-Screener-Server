@@ -13,12 +13,21 @@ UTC_MARKET_CLOSE = '20:00:00'
 def get_current_date():
     return datetime.datetime.today().strftime('%Y-%m-%d')
 
+def get_current_date_datetime():
+    return datetime.datetime.today()
+
 # returns date n days ago from today in YYYY-MM-DD format
 def get_date_n_days_ago(n):
     current_date = datetime.datetime.now()
     delta = datetime.timedelta(**{'days': n})
     n_days_ago = current_date - delta
     return n_days_ago.strftime('%Y-%m-%d')
+
+def get_date_n_days_ago_datetime(n):
+    current_date = datetime.datetime.now()
+    delta = datetime.timedelta(**{'days': n})
+    n_days_ago = current_date - delta
+    return n_days_ago
 
 # returns YYYY-MM-DD date format from epoch time
 def epoch_to_date_format(epoch_time):
@@ -49,7 +58,7 @@ def polygon_get_request_multithreaded(url, session):
     return None
 
 def add_daily_price_data(ticker, session, connection, cursor):
-    url = 'https://api.polygon.io/v2/aggs/ticker/' + ticker + '/range/1/day/' + get_date_n_days_ago(252) + '/' + get_current_date() + '?sort=asc&apiKey=AKZYR3WO7U8B33F3O582'
+    url = 'https://api.polygon.io/v2/aggs/ticker/' + ticker + '/range/1/day/' + get_date_n_days_ago(365) + '/' + get_current_date() + '?sort=asc&apiKey=AKZYR3WO7U8B33F3O582'
     resp = polygon_get_request_multithreaded(url, session)
     if not resp or len(resp['results']) == 0:
         return None
@@ -67,7 +76,7 @@ def add_daily_price_data(ticker, session, connection, cursor):
     return 'SUCCESSFULLY ADDED DAILY PRICE DATA FOR' + ' ' + ticker
 
 def add_minute_price_data(ticker, session, connection, cursor):
-    url = 'https://api.polygon.io/v2/aggs/ticker/' + ticker + '/range/1/minute/' + get_date_n_days_ago(1) + '/' + get_date_n_days_ago(1) + '?sort=asc&apiKey=AKZYR3WO7U8B33F3O582'
+    url = 'https://api.polygon.io/v2/aggs/ticker/' + ticker + '/range/1/minute/' + get_date_n_days_ago(3) + '/' + get_date_n_days_ago(3) + '?sort=asc&apiKey=AKZYR3WO7U8B33F3O582'
     resp = polygon_get_request_multithreaded(url, session)
     if not resp or len(resp['results']) == 0:
         return None

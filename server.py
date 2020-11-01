@@ -46,15 +46,15 @@ def add_tracker(ticker):
     try:
         cursor.execute("CALL add_tracker(%s);", (ticker,))
     except Exception as e:
-        return str(e)
+        return {'error':str(e)}
     if not util.add_daily_price_data(ticker, session, connection, cursor) or not util.add_minute_price_data(ticker, session, connection, cursor):
         cursor.close()
         connection.close()
-        return 'COULD NOT ADD PRICE DATA FOR' + ' ' + ticker
+        return {'error':'COULD NOT ADD PRICE DATA FOR' + ' ' + ticker}
     connection.commit()
     cursor.close()
     connection.close()
-    return 'Successfully added the selected ticker!'
+    return {'success':'Successfully added the selected ticker!'}
 
 # Removes a ticker that is being tracked alongisde all the price data for that ticker
 @app.route('/remove_tracker/<string:ticker>')
@@ -78,7 +78,7 @@ def get_trackers():
     connection = connect_to_postgres()
     cursor = connection.cursor()
     try:
-        cursor.execute("SELECT * FROM Trackers T1 NATURAL JOIN Prices P1 NATURAL JOIN Fundamentals F1 WHERE P1.timestamp = (SELECT MAX(P2.timestamp) FROM Prices P2 WHERE P2.ticker = P1.ticker)")
+        cursor.execute("SELECT * FROM Trackers T1 NATURAL JOIN Minute_Prices P1 NATURAL JOIN Fundamentals F1 WHERE P1.timestamp = (SELECT MAX(P2.timestamp) FROM Minute_Prices P2 WHERE P2.ticker = P1.ticker)")
     except Exception as e:
         return str(e)
     tracked_raw_data = [record for record in cursor]
@@ -86,10 +86,117 @@ def get_trackers():
         return 'No stocks are currently being tracked'
     tracked_stocks = []
     for stock in tracked_raw_data:
-        curr_stock_map = {'ticker': stock[0], 'timestamp': stock[1].strftime('%Y-%m-%d'), 'open': stock[2], 'close': stock[3], 'high': stock[4], 'low': stock[5], 'volume': stock[6],
+        curr_stock_map = {'ticker': stock[0], 'timestamp': stock[1], 'open': stock[2], 'close': stock[3], 'high': stock[4], 'low': stock[5], 'volume': stock[6],
         'company_name': stock[7], 'industry': stock[8], 'sector': stock[9], 'market_cap': stock[10], 'description': stock[11]}
         tracked_stocks.append(curr_stock_map)
     cursor.close()
     connection.close()
     return {'tracked': tracked_stocks}
 
+@app.route('/get/<string:ticker>')
+def get_ticker_data(ticker):
+    connection = connect_to_postgres()
+    cursor = connection.cursor()
+    ticker = ticker.upper()
+    add_tracker(ticker)
+    try:
+        cursor.execute(
+            '''
+            SELECT * 
+            FROM Fundamentals 
+            WHERE ticker = %s
+            '''
+            ,
+            [ticker]
+        )
+    except Exception as e:
+        return {'error': str(e)}
+
+    fundamentals = cursor.fetchone()
+
+    try:
+        cursor.execute(
+            '''
+            SELECT *
+            FROM Daily_Prices
+            WHERE ticker = %s
+            ORDER BY date DESC
+            '''
+            ,
+            [ticker]
+        )
+    except Exception as e:
+        return {'error': str(e)}
+
+    daily_prices = [record for record in cursor]
+
+    try:
+        cursor.execute(
+            '''
+            SELECT *
+            FROM Minute_Prices
+            WHERE ticker = %s
+            ORDER BY timestamp DESC
+            '''
+            ,
+            [ticker]
+        )
+    except Exception as e:
+        return {'error': str(e)}
+
+    minute_prices = [record for record in cursor]
+
+    if not fundamentals:
+        return {'error': 'No fundamental data found'}
+    if not daily_prices:
+        return {'error': 'No daily_prices data found'}
+    if not minute_prices:
+        return {'error': 'No minute_prices data found'}
+    
+    ticker_data = {
+        'ticker': ticker,
+        'prices': {
+            '1d': list(),
+            '5d': list(),
+            '1m': list(),
+            '3m': list(),
+            '6m': list(),
+            '1y': list()
+        },
+        'fundamentals': {
+            'volume': fundamentals[0],
+            'company_name': fundamentals[1], 
+            'industry': fundamentals[2], 
+            'sector': fundamentals[3], 
+            'market_cap': fundamentals[4], 
+            'description': fundamentals[5]
+        },
+        'news': {
+            'title':'need implement'
+        }
+    }
+
+    curday = util.get_current_date_datetime()
+    datetime1m = util.get_date_n_days_ago_datetime(30)
+    datetime3m = util.get_date_n_days_ago_datetime(62)
+    datetime6m = util.get_date_n_days_ago_datetime(183)
+
+    for i, day in enumerate(daily_prices):
+        temp = {
+            'timestamp': day[1],
+            'open': day[2],
+            'close': day[3],
+            'high': day[4],
+            'low': day[5]
+        }
+        temp_date = util
+        if day[1] < datetime1m:
+            ticker_data['prices']['1m'].append(temp)
+        if day[1] < datetime3m:
+            ticker_data['prices']['3m'].append(temp)
+        if day[1] < datetime6m:
+            ticker_data['prices']['6m'].append(temp)
+        ticker_data['prices']['1y'].append(temp)
+    cursor.close()
+    connection.close()
+    return ticker_data

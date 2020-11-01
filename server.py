@@ -186,9 +186,11 @@ def get_ticker_data(ticker):
             'market_cap': fundamentals[4], 
             'description': fundamentals[5]
         },
-        'news': {
-            'title':'need implement'
-        }
+        'news': [
+            {
+                'title':'need implement'
+            },
+        ]
     }
 
     curday = util.get_current_date_datetime()

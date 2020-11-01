@@ -192,26 +192,40 @@ def get_ticker_data(ticker):
     }
 
     curday = util.get_current_date_datetime()
-    datetime1m = util.get_date_n_days_ago_datetime(30)
+    datetime5d = util.get_date_n_days_ago_datetime(7)
+    datetime1m = util.get_date_n_days_ago_datetime(31)
     datetime3m = util.get_date_n_days_ago_datetime(62)
     datetime6m = util.get_date_n_days_ago_datetime(183)
 
-    for i, day in enumerate(daily_prices):
+    for day in daily_prices:
+        temp_datetime = util.d2dt(day[1])
         temp = {
-            'timestamp': day[1],
+            'timestamp': temp_datetime,
             'open': day[2],
             'close': day[3],
             'high': day[4],
             'low': day[5]
         }
-        temp_datetime = util.d2dt(d)
-        if temp_datetime < datetime1m:
+        if temp_datetime > datetime5d:
+            ticker_data['prices']['5d'].append(temp)
+        if temp_datetime > datetime1m:
             ticker_data['prices']['1m'].append(temp)
-        if temp_datetime < datetime3m:
+        if temp_datetime > datetime3m:
             ticker_data['prices']['3m'].append(temp)
-        if temp_datetime < datetime6m:
+        if temp_datetime > datetime6m:
             ticker_data['prices']['6m'].append(temp)
         ticker_data['prices']['1y'].append(temp)
+    
+    for minute in minute_prices:
+        temp = {
+            'timestamp': minute[1],
+            'open': minute[2],
+            'close': minute[3],
+            'high': minute[4],
+            'low': minute[5]
+        }
+        ticker_data['prices']['1d'].append(temp)
+    
     cursor.close()
     connection.close()
     return ticker_data

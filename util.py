@@ -11,11 +11,14 @@ UTC_MARKET_CLOSE = '20:00:00'
 
 # convert date to datetime
 def d2dt(d):
-    return datetime.datetime.combine(d, time())
+    return datetime.datetime.combine(d, datetime.time())
 
 # returns current date string in YYYY-MM-DD format
 def get_current_date():
     return datetime.datetime.today().strftime('%Y-%m-%d')
+
+def get_current_date_datetime():
+    return datetime.datetime.today()
 
 # returns current day of week (0 = monday and 6 = sunday)
 def get_current_day_of_week():

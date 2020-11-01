@@ -81,7 +81,6 @@ def add_minute_price_data(ticker, session, connection, cursor):
         url = 'https://api.polygon.io/v2/aggs/ticker/' + ticker + '/range/1/minute/' + get_date_n_days_ago(1) + '/' + get_date_n_days_ago(1) + '?sort=asc&apiKey=AKZYR3WO7U8B33F3O582'
     resp = polygon_get_request_multithreaded(url, session)
     if not resp or len(resp['results']) == 0:
-        print('fucked up here')
         return None
     count = 0
     with open ('new_minute_price_data.csv', 'w+', newline='') as csv_file:

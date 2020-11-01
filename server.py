@@ -46,15 +46,15 @@ def add_tracker(ticker):
     try:
         cursor.execute("CALL add_tracker(%s);", (ticker,))
     except Exception as e:
-        return {'error':str(e)}
+        return {'error': str(e)}
     if not util.add_daily_price_data(ticker, session, connection, cursor) or not util.add_minute_price_data(ticker, session, connection, cursor):
         cursor.close()
         connection.close()
-        return {'error':'COULD NOT ADD PRICE DATA FOR' + ' ' + ticker}
+        return {'error': 'COULD NOT ADD PRICE DATA FOR' + ' ' + ticker}
     connection.commit()
     cursor.close()
     connection.close()
-    return {'success':'Successfully added the selected ticker!'}
+    return {'success': 'Successfully added the selected ticker!'}
 
 # Removes a ticker that is being tracked alongisde all the price data for that ticker
 @app.route('/remove_tracker/<string:ticker>')
@@ -65,11 +65,26 @@ def remove_tracker(ticker):
     try:
         cursor.execute("CALL remove_tracker(%s);", (ticker,))
     except Exception as e:
-        return str(e)
+        return {'error': str(e)}
     connection.commit()
     cursor.close()
     connection.close()
-    return 'Successfully removed the selected ticker!'
+    return {'success': 'Successfully removed the selected ticker!'}
+
+# Returns a list of all available tickers to track
+@app.route('/get_all_tickers')
+def get_all_tickers():
+    connection = connect_to_postgres()
+    cursor = connection.cursor()
+    try:
+        cursor.execute("SELECT ticker FROM Fundamentals")
+    except Exception as e:
+        return {'error': str(e)}
+    tickers = [record[0] for record in cursor]
+    connection.commit()
+    cursor.close()
+    connection.close()
+    return {'success': tickers}
 
 # NEED TO CHANGE THIS TO RETURN THE CORRECT PRICE DATA (HASN'T BEEN DECIDED YET?)
 # Grabs all currently tracked stocks most recently updated price data
@@ -189,12 +204,12 @@ def get_ticker_data(ticker):
             'high': day[4],
             'low': day[5]
         }
-        temp_date = util
-        if day[1] < datetime1m:
+        temp_datetime = util.d2dt(d)
+        if temp_datetime < datetime1m:
             ticker_data['prices']['1m'].append(temp)
-        if day[1] < datetime3m:
+        if temp_datetime < datetime3m:
             ticker_data['prices']['3m'].append(temp)
-        if day[1] < datetime6m:
+        if temp_datetime < datetime6m:
             ticker_data['prices']['6m'].append(temp)
         ticker_data['prices']['1y'].append(temp)
     cursor.close()

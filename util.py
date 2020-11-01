@@ -9,12 +9,17 @@ import pandas as pd
 UTC_MARKET_OPEN = '13:30:00'
 UTC_MARKET_CLOSE = '20:00:00'
 
+# convert date to datetime
+def d2dt(d):
+    return datetime.datetime.combine(d, time())
+
 # returns current date string in YYYY-MM-DD format
 def get_current_date():
     return datetime.datetime.today().strftime('%Y-%m-%d')
 
-def get_current_date_datetime():
-    return datetime.datetime.today()
+# returns current day of week (0 = monday and 6 = sunday)
+def get_current_day_of_week():
+    return datetime.datetime.today().weekday()
 
 # returns date n days ago from today in YYYY-MM-DD format
 def get_date_n_days_ago(n):
@@ -76,7 +81,14 @@ def add_daily_price_data(ticker, session, connection, cursor):
     return 'SUCCESSFULLY ADDED DAILY PRICE DATA FOR' + ' ' + ticker
 
 def add_minute_price_data(ticker, session, connection, cursor):
-    url = 'https://api.polygon.io/v2/aggs/ticker/' + ticker + '/range/1/minute/' + get_date_n_days_ago(3) + '/' + get_date_n_days_ago(3) + '?sort=asc&apiKey=AKZYR3WO7U8B33F3O582'
+    url = None
+    curr_day_of_week = get_current_day_of_week()
+    if curr_day_of_week == 0:
+        url = 'https://api.polygon.io/v2/aggs/ticker/' + ticker + '/range/1/minute/' + get_date_n_days_ago(3) + '/' + get_date_n_days_ago(3) + '?sort=asc&apiKey=AKZYR3WO7U8B33F3O582'
+    elif curr_day_of_week == 6:
+        url = 'https://api.polygon.io/v2/aggs/ticker/' + ticker + '/range/1/minute/' + get_date_n_days_ago(2) + '/' + get_date_n_days_ago(2) + '?sort=asc&apiKey=AKZYR3WO7U8B33F3O582'
+    else:
+        url = 'https://api.polygon.io/v2/aggs/ticker/' + ticker + '/range/1/minute/' + get_date_n_days_ago(1) + '/' + get_date_n_days_ago(1) + '?sort=asc&apiKey=AKZYR3WO7U8B33F3O582'
     resp = polygon_get_request_multithreaded(url, session)
     if not resp or len(resp['results']) == 0:
         return None

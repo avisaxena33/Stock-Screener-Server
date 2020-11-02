@@ -76,11 +76,11 @@ def add_daily_price_data(ticker, session, connection, cursor):
         write = csv.writer(csv_file)
         curr_ticker = resp['ticker']
         for day in resp['results']:
-            db_date_format = epoch_to_date_format(day['t'])
-            prices = [curr_ticker, db_date_format, day['o'], day['c'], day['h'], day['l'], day['v']]
+            db_timestamp_format = epoch_to_timestamp_format(day['t'])
+            prices = [curr_ticker, db_timestamp_format, day['o'], day['c'], day['h'], day['l'], day['v']]
             write.writerow(prices)
     csv_file = open('new_daily_price_data.csv', 'r')
-    cursor.copy_from(csv_file, 'Daily_Prices', sep=',', columns=('ticker', 'date', 'open', 'close', 'high', 'low', 'volume'))
+    cursor.copy_from(csv_file, 'Daily_Prices', sep=',', columns=('ticker', 'timestamp', 'open', 'close', 'high', 'low', 'volume'))
     csv_file.close()
     os.remove('new_daily_price_data.csv')
     return 'SUCCESSFULLY ADDED DAILY PRICE DATA FOR' + ' ' + ticker

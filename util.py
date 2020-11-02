@@ -87,7 +87,7 @@ def add_daily_price_data(ticker, session, connection, cursor):
             prices = [curr_ticker, db_timestamp_format, day['o'], day['c'], day['h'], day['l'], day['v']]
             write.writerow(prices)
     csv_file = open('new_daily_price_data.csv', 'r')
-    cursor.copy_from(csv_file, 'Daily_Prices', sep=',', columns=('ticker', 'timestamp', 'open', 'close', 'high', 'low', 'volume'))
+    cursor.copy_expert("copy Daily_Prices from stdin (format csv)", csv_file)
     csv_file.close()
     os.remove('new_daily_price_data.csv')
     return 'SUCCESSFULLY ADDED DAILY PRICE DATA FOR {}'.format(ticker)
@@ -115,7 +115,7 @@ def add_minute_price_data(ticker, session, connection, cursor):
                 prices = [curr_ticker, db_timestamp_format, minute['o'], minute['c'], minute['h'], minute['l'], minute['v']]
                 write.writerow(prices)
     csv_file = open('new_minute_price_data.csv', 'r')
-    cursor.copy_from(csv_file, 'Minute_Prices', sep=',', columns=('ticker', 'timestamp', 'open', 'close', 'high', 'low', 'volume'))
+    cursor.copy_expert("copy Minute_Prices from stdin (format csv)", csv_file)
     csv_file.close()
     os.remove('new_minute_price_data.csv')
     return 'SUCCESSFULLY ADDED MINUTE PRICE DATA FOR {}'.format(ticker)
@@ -130,7 +130,6 @@ def add_tweets(ticker, tweepy_api, session, connection, cursor):
         write = csv.writer(csv_file)
         for tweet in searched_tweets:
             tweet = [tweet['id_str'], tweet['text'].encode('utf-8'), ticker, tweepy_date_to_datetime(tweet['created_at'])]
-            print(tweet[0])
             write.writerow(tweet)
     csv_file = open('new_tweets_data.csv', 'r')
     cursor.copy_expert("copy Tweets from stdin (format csv)", csv_file)
@@ -150,7 +149,6 @@ def add_news_articles(ticker, session, connection, cursor):
             write.writerow(prices)
     csv_file = open('new_news_data.csv', 'r')
     cursor.copy_expert("copy News from stdin (format csv)", csv_file)
-    # cursor.copy_from(csv_file, 'News', sep=',', columns=('timestamp', 'ticker', 'title', 'url', 'summary'))
     csv_file.close()
     os.remove('new_news_data.csv')
     return 'SUCCESSFULLY ADDED NEWS DATA FOR {}'.format(ticker)

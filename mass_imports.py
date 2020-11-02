@@ -2,7 +2,7 @@
 # First grabs all fundamental info for SPY500 stocks as per the CSV and inserts into fundamentals table
 @app.route('/get_all_fundamentals')
 def grab_fundamentals():
-    spy_500_tickers = read_spy_tickers()
+    spy_500_tickers = util.read_spy_tickers()
     url1 = 'https://api.polygon.io/v1/meta/symbols/'
     url2 = '/company?apiKey=AKZYR3WO7U8B33F3O582'
     count = 0
@@ -11,24 +11,22 @@ def grab_fundamentals():
     with concurrent.futures.ThreadPoolExecutor(max_workers=16) as executor:
         futures = []
         for ticker in spy_500_tickers:
-            futures.append(executor.submit(polygon_get_request_multithreaded, url1+ticker+url2))
+            futures.append(executor.submit(util.polygon_get_request_multithreaded, url1+ticker+url2, session))
         with open ('fundamental_data.csv', 'w+', newline='') as csv_file:
             write = csv.writer(csv_file, delimiter=',')
             for future in concurrent.futures.as_completed(futures):
                 resp = future.result()
                 if not resp:
                     continue
-                # must strip commas from description or else CSV delimiter will be confused
-                stripped_description = resp['description'].replace(',', '')
                 # must hardcode 0 marketcap when NULL is returned from API for that field
                 if not resp['marketcap']:
                     resp['marketcap'] = 0
-                fundamentals = [resp['symbol'], resp['name'], resp['industry'], resp['sector'], resp['marketcap'], stripped_description]
+                fundamentals = [resp['symbol'], resp['name'], resp['industry'], resp['sector'], resp['marketcap'], resp['description']]
                 write.writerow(fundamentals)
                 count += 1
                 print(count)
         csv_file = open('fundamental_data.csv', 'r')
-        cursor.copy_from(csv_file, 'Fundamentals', sep=',', columns=('ticker', 'name', 'industry', 'sector', 'market_cap', 'description'))
+        cursor.copy_expert("copy Fundamentals from stdin (format csv)", csv_file)
         csv_file.close()
     os.remove('fundamental_data.csv')
     connection.commit()

@@ -113,7 +113,7 @@ def add_minute_price_data(ticker, session, connection, cursor):
     return 'SUCCESSFULLY ADDED MINUTE PRICE DATA FOR {}'.format(ticker)
 
 def add_news_articles(ticker, session, connection, cursor):
-    url = '{}/v1/meta/symbols/{}/news?perpage=50&page=1'.format(POLYGON_BASE_URL, ticker)
+    url = '{}/v1/meta/symbols/{}/news?perpage=50&page=1&apiKey={}'.format(POLYGON_BASE_URL, ticker, POLYGON_API_KEY)
     resp = polygon_get_request_multithreaded(url, session)
     
     with open('new_news_data.csv', 'w+', newline='') as csv_file:
@@ -122,7 +122,8 @@ def add_news_articles(ticker, session, connection, cursor):
             prices = [article['timestamp'], ticker, article['title'], article['url'], article['summary']]
             write.writerow(prices)
     csv_file = open('new_news_data.csv', 'r')
-    cursor.copy_from(csv_file, 'News', sep=',', columns=('timestamp', 'ticker', 'title', 'url', 'summary'))
+    cursor.copy_expert("copy News from stdin (format csv)", csv_file)
+    # cursor.copy_from(csv_file, 'News', sep=',', columns=('timestamp', 'ticker', 'title', 'url', 'summary'))
     csv_file.close()
     os.remove('new_news_data.csv')
     return 'SUCCESSFULLY ADDED NEWS DATA FOR {}'.format(ticker)

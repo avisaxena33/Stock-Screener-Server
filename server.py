@@ -69,11 +69,11 @@ def update_news(ticker):
         cursor.execute("CALL remove_news(%s);", (ticker,))
     except Exception as e:
         return {'error': str(e)}
-    add_news_articles(ticker, session, connection, cursor)
+    util.add_news_articles(ticker, session, connection, cursor)
     connection.commit()
     cursor.close()
     connection.close()
-    return {'success': 'Successfully removed {}!'.format(ticker)}
+    return {'success': 'Successfully updated news for {}!'.format(ticker)}
 
 # Returns a list of all available tickers to track
 @app.route('/get_all_tickers')
@@ -140,7 +140,7 @@ def get_ticker_data(ticker):
             SELECT *
             FROM Daily_Prices
             WHERE ticker = %s
-            ORDER BY date DESC
+            ORDER BY timestamp DESC
             '''
             ,
             [ticker]

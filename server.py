@@ -6,29 +6,16 @@ import util
 import requests 
 import concurrent.futures
 
+from config import *
+
 # Flask class reference
 app = Flask(__name__)
 session = requests.Session()
 
-# Environment variables
-ENDPOINT="stock-screener-2.c1h93r1ybkd8.us-west-2.rds.amazonaws.com"
-PORT="5432"
-USR="Administrator"
-REGION="us-west-2"
-DBNAME="postgres"
-
-# This looks bad I know C:
-MASTER_USERNAME = 'buffoon_squad'
-MASTER_PASSWORD = 'Sharingan_Amaterasu33'
-
-# Polygon API Key
-key = "hTrh4n_vtmgDjJjdf1rwWtjkw7PJIa1b"
-albert_key = 'AKZYR3WO7U8B33F3O582'
-
 # Attempts to connect to database and returns connection object if successsful
 def connect_to_postgres(): 
     try:
-        return psycopg2.connect(host=ENDPOINT, port=PORT, dbname=DBNAME, user=MASTER_USERNAME, password=MASTER_PASSWORD)
+        return psycopg2.connect(host=DB_ENDPOINT, port=PORT, dbname=DB_NAME, user=MASTER_USERNAME, password=MASTER_PASSWORD)
     except Exception as e:
         print("Database connection failed due to {}".format(e))   
 
@@ -108,6 +95,11 @@ def get_trackers():
     connection.close()
     return {'tracked': tracked_stocks}
 
+# gets 3 news articles for a ticker (can modify to return 50)
+
+
+
+# gets {fundamentals, prices(1d,...,1y), news} for one ticker
 @app.route('/get/<string:ticker>')
 def get_ticker_data(ticker):
     connection = connect_to_postgres()

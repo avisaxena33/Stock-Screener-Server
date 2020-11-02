@@ -6,6 +6,8 @@ import os
 import datetime
 import pandas as pd
 
+from config import *
+
 UTC_MARKET_OPEN = '13:30:00'
 UTC_MARKET_CLOSE = '20:00:00'
 
@@ -66,7 +68,7 @@ def polygon_get_request_multithreaded(url, session):
     return None
 
 def add_daily_price_data(ticker, session, connection, cursor):
-    url = 'https://api.polygon.io/v2/aggs/ticker/' + ticker + '/range/1/day/' + get_date_n_days_ago(365) + '/' + get_current_date() + '?sort=asc&apiKey=AKZYR3WO7U8B33F3O582'
+    url = '{}/v2/aggs/ticker/{}/range/1/day/{}/{}?sort=asc&apiKey={}'.format(POLYGON_BASE_URL, ticker, get_date_n_days_ago(365), get_current_date(), POLYGON_API_KEY) 
     resp = polygon_get_request_multithreaded(url, session)
     if not resp or len(resp['results']) == 0:
         return None
@@ -87,11 +89,11 @@ def add_minute_price_data(ticker, session, connection, cursor):
     url = None
     curr_day_of_week = get_current_day_of_week()
     if curr_day_of_week == 0:
-        url = 'https://api.polygon.io/v2/aggs/ticker/' + ticker + '/range/1/minute/' + get_date_n_days_ago(3) + '/' + get_date_n_days_ago(3) + '?sort=asc&apiKey=AKZYR3WO7U8B33F3O582'
+        url = '{}/v2/aggs/ticker/{}/range/1/minute/{}/{}?sort=asc&apiKey={}'.format(POLYGON_BASE_URL, ticker, get_date_n_days_ago(3), get_date_n_days_ago(3), POLYGON_API_KEY)
     elif curr_day_of_week == 6:
-        url = 'https://api.polygon.io/v2/aggs/ticker/' + ticker + '/range/1/minute/' + get_date_n_days_ago(2) + '/' + get_date_n_days_ago(2) + '?sort=asc&apiKey=AKZYR3WO7U8B33F3O582'
+        url = '{}/v2/aggs/ticker/{}/range/1/minute/{}/{}?sort=asc&apiKey={}'.format(POLYGON_BASE_URL, ticker, get_date_n_days_ago(2), get_date_n_days_ago(2), POLYGON_API_KEY)
     else:
-        url = 'https://api.polygon.io/v2/aggs/ticker/' + ticker + '/range/1/minute/' + get_date_n_days_ago(1) + '/' + get_date_n_days_ago(1) + '?sort=asc&apiKey=AKZYR3WO7U8B33F3O582'
+        url = '{}/v2/aggs/ticker/{}/range/1/minute/{}/{}?sort=asc&apiKey={}'.format(POLYGON_BASE_URL, ticker, get_date_n_days_ago(1), get_date_n_days_ago(1), POLYGON_API_KEY)
     resp = polygon_get_request_multithreaded(url, session)
     if not resp or len(resp['results']) == 0:
         return None

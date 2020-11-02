@@ -44,7 +44,7 @@ def add_tracker(ticker):
     connection.close()
     return {'success': 'Successfully added {}!'.format(ticker)}
 
-# Removes a ticker that is being tracked alongisde all the price data for that ticker
+# Removes a ticker that is being tracked alongside all the price and news data for that ticker
 @app.route('/remove_tracker/<string:ticker>')
 def remove_tracker(ticker):
     ticker = ticker.upper()
@@ -54,12 +54,13 @@ def remove_tracker(ticker):
         cursor.execute("CALL remove_tracker(%s);", (ticker,))
     except Exception as e:
         return {'error': str(e)}
+    update_news(ticker)
     connection.commit()
     cursor.close()
     connection.close()
     return {'success': 'Successfully removed {}!'.format(ticker)}
 
-# Removes a ticker that is being tracked alongisde all the price data for that ticker
+# Removes all news data for a given ticker
 @app.route('/update_news/<string:ticker>')
 def update_news(ticker):
     ticker = ticker.upper()

@@ -5,15 +5,21 @@ import csv
 import os
 import datetime
 import pandas as pd
+import tweepy
 
 from config import *
 
 UTC_MARKET_OPEN = '13:30:00'
 UTC_MARKET_CLOSE = '20:00:00'
+TWEET_BASE_URL = 'https://twitter.com/user/status/'
 
 # convert date to datetime
 def d2dt(d):
     return datetime.datetime.combine(d, datetime.time())
+
+# returns stripped tweepy created_at date
+def tweepy_date_to_datetime(tweet_date):
+    return datetime.datetime.strftime(datetime.datetime.strptime(tweet_date,'%a %b %d %H:%M:%S +0000 %Y'), '%Y-%m-%d %H:%M:%S')
 
 # returns current date string in YYYY-MM-DD format
 def get_current_date():
@@ -67,6 +73,7 @@ def polygon_get_request_multithreaded(url, session):
         return json.loads(resp.text)
     return None
 
+# adds daily price data (for last 365 days) for a newly tracked ticker
 def add_daily_price_data(ticker, session, connection, cursor):
     url = '{}/v2/aggs/ticker/{}/range/1/day/{}/{}?sort=asc&apiKey={}'.format(POLYGON_BASE_URL, ticker, get_date_n_days_ago(365), get_current_date(), POLYGON_API_KEY) 
     resp = polygon_get_request_multithreaded(url, session)
@@ -85,6 +92,7 @@ def add_daily_price_data(ticker, session, connection, cursor):
     os.remove('new_daily_price_data.csv')
     return 'SUCCESSFULLY ADDED DAILY PRICE DATA FOR {}'.format(ticker)
 
+# adds minute-by-minute price data (for the last trading day) for a newly tracked ticker
 def add_minute_price_data(ticker, session, connection, cursor):
     url = None
     curr_day_of_week = get_current_day_of_week()
@@ -112,6 +120,25 @@ def add_minute_price_data(ticker, session, connection, cursor):
     os.remove('new_minute_price_data.csv')
     return 'SUCCESSFULLY ADDED MINUTE PRICE DATA FOR {}'.format(ticker)
 
+# adds tweets for a newly tracked ticker
+def add_tweets(ticker, tweepy_api, session, connection, cursor):
+    query = ticker
+    max_tweets = 50
+    searched_tweets = [status._json for status in tweepy.Cursor(tweepy_api.search, q=query).items(max_tweets)]
+    
+    with open('new_tweets_data.csv', 'w+', newline='') as csv_file:
+        write = csv.writer(csv_file)
+        for tweet in searched_tweets:
+            tweet = [tweet['id_str'], tweet['text'].encode('utf-8'), ticker, tweepy_date_to_datetime(tweet['created_at'])]
+            print(tweet[0])
+            write.writerow(tweet)
+    csv_file = open('new_tweets_data.csv', 'r')
+    cursor.copy_expert("copy Tweets from stdin (format csv)", csv_file)
+    csv_file.close()
+    os.remove('new_tweets_data.csv')
+    return 'SUCCESSFULLY ADDED TWEETS DATA FOR {}'.format(ticker)
+
+# adds news articles for a newly tracked ticker
 def add_news_articles(ticker, session, connection, cursor):
     url = '{}/v1/meta/symbols/{}/news?perpage=50&page=1&apiKey={}'.format(POLYGON_BASE_URL, ticker, POLYGON_API_KEY)
     resp = polygon_get_request_multithreaded(url, session)

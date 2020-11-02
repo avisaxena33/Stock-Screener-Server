@@ -5,8 +5,15 @@ from flask import Flask
 import util
 import requests 
 import concurrent.futures
+import json
+import tweepy
 
 from config import *
+
+# Tweepy config
+auth = tweepy.OAuthHandler(TWEEPY_CONSUMER_KEY, TWEEPY_CONSUMER_SECRET)
+auth.set_access_token(TWEEPY_ACCESS_TOKEN, TWEEPY_ACCESS_SECRET)
+tweepy_api = tweepy.API(auth)    
 
 # Flask class reference
 app = Flask(__name__)
@@ -38,13 +45,13 @@ def add_tracker(ticker):
         cursor.close()
         connection.close()
         return {'error': 'COULD NOT ADD PRICE DATA FOR' + ' ' + ticker}
-    util.add_news_articles(ticker, session, connection, cursor)
+    util.add_tweets(ticker, tweepy_api, session, connection, cursor)
     connection.commit()
     cursor.close()
     connection.close()
     return {'success': 'Successfully added {}!'.format(ticker)}
 
-# Removes a ticker that is being tracked alongside all the price and news data for that ticker
+# Removes a ticker that is being tracked alongside all the price and tweets data for that ticker
 @app.route('/remove_tracker/<string:ticker>')
 def remove_tracker(ticker):
     ticker = ticker.upper()
@@ -54,11 +61,26 @@ def remove_tracker(ticker):
         cursor.execute("CALL remove_tracker(%s);", (ticker,))
     except Exception as e:
         return {'error': str(e)}
-    update_news(ticker)
     connection.commit()
     cursor.close()
     connection.close()
     return {'success': 'Successfully removed {}!'.format(ticker)}
+
+# Replaces old tweets with new tweets for a given ticker
+@app.route('/update_tweets/<string:ticker>')
+def update_tweets(ticker):
+    ticker = ticker.upper()
+    connection = connect_to_postgres()
+    cursor = connection.cursor()
+    try:
+        cursor.execute("CALL remove_tweets(%s);", (ticker,))
+    except Exception as e:
+        return {'error': str(e)}
+    util.add_tweets(ticker, tweepy_api, session, connection, cursor)
+    connection.commit()
+    cursor.close()
+    connection.close()
+    return {'success': 'Successfully updated news for {}!'.format(ticker)}  
 
 # Removes all news data for a given ticker
 @app.route('/update_news/<string:ticker>')
@@ -90,7 +112,7 @@ def get_all_tickers():
     cursor.close()
     connection.close()
     return {'success': tickers}
-
+'''
 # NEED TO CHANGE THIS TO RETURN THE CORRECT PRICE DATA (HASN'T BEEN DECIDED YET?)
 # Grabs all currently tracked stocks most recently updated price data
 @app.route('/get_trackers')
@@ -112,7 +134,7 @@ def get_trackers():
     cursor.close()
     connection.close()
     return {'tracked': tracked_stocks}
-
+'''
 # gets {fundamentals, prices(1d,...,1y), news(5 articles, can change to 50)} for one ticker
 @app.route('/get_data/<string:ticker>')
 def get_ticker_data(ticker):

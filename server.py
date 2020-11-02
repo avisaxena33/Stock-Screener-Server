@@ -82,10 +82,10 @@ def get_trackers():
     try:
         cursor.execute("SELECT * FROM Trackers T1 NATURAL JOIN Minute_Prices P1 NATURAL JOIN Fundamentals F1 WHERE P1.timestamp = (SELECT MAX(P2.timestamp) FROM Minute_Prices P2 WHERE P2.ticker = P1.ticker)")
     except Exception as e:
-        return str(e)
+        return {'error': str(e)}
     tracked_raw_data = [record for record in cursor]
     if not tracked_raw_data or len(tracked_raw_data) == 0:
-        return 'No stocks are currently being tracked'
+        return {'error': 'No stocks are currently being tracked'}
     tracked_stocks = []
     for stock in tracked_raw_data:
         curr_stock_map = {'ticker': stock[0], 'timestamp': stock[1], 'open': stock[2], 'close': stock[3], 'high': stock[4], 'low': stock[5], 'volume': stock[6],
@@ -95,12 +95,8 @@ def get_trackers():
     connection.close()
     return {'tracked': tracked_stocks}
 
-# gets 3 news articles for a ticker (can modify to return 50)
-
-
-
 # gets {fundamentals, prices(1d,...,1y), news} for one ticker
-@app.route('/get/<string:ticker>')
+@app.route('/get_data/<string:ticker>')
 def get_ticker_data(ticker):
     connection = connect_to_postgres()
     cursor = connection.cursor()
@@ -152,6 +148,23 @@ def get_ticker_data(ticker):
         return {'error': str(e)}
 
     minute_prices = [record for record in cursor]
+
+    try:
+        cursor.execute(
+            '''
+            SELECT *
+            FROM News
+            WHERE ticker = %s
+            ORDER BY timestamp DESC
+            LIMIT 3
+            '''
+            ,
+            [ticker]
+        )
+    except Exception as e:
+        return {'error': str(e)}
+
+    news = [record for record in cursor]
 
     if not fundamentals:
         return {'error': 'No fundamental data found'}

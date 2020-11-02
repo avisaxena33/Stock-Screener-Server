@@ -111,3 +111,12 @@ def add_minute_price_data(ticker, session, connection, cursor):
     csv_file.close()
     os.remove('new_minute_price_data.csv')
     return 'SUCCESSFULLY ADDED MINUTE PRICE DATA FOR' + ' ' + ticker
+
+def add_news_articles(ticker):
+    url = '{}/v1/meta/symbols/{}/news?perpage='
+    resp = polygon_get_request_multithreaded(url, session)
+
+    if not resp or len(resp['results']) == 0:
+        return None
+    
+    

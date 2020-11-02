@@ -83,7 +83,7 @@ def add_daily_price_data(ticker, session, connection, cursor):
     cursor.copy_from(csv_file, 'Daily_Prices', sep=',', columns=('ticker', 'date', 'open', 'close', 'high', 'low', 'volume'))
     csv_file.close()
     os.remove('new_daily_price_data.csv')
-    return 'SUCCESSFULLY ADDED DAILY PRICE DATA FOR' + ' ' + ticker
+    return 'SUCCESSFULLY ADDED DAILY PRICE DATA FOR {}'.format(ticker)
 
 def add_minute_price_data(ticker, session, connection, cursor):
     url = None
@@ -97,8 +97,8 @@ def add_minute_price_data(ticker, session, connection, cursor):
     resp = polygon_get_request_multithreaded(url, session)
     if not resp or len(resp['results']) == 0:
         return None
-    count = 0
-    with open ('new_minute_price_data.csv', 'w+', newline='') as csv_file:
+    
+    with open('new_minute_price_data.csv', 'w+', newline='') as csv_file:
         write = csv.writer(csv_file)
         curr_ticker = resp['ticker']
         for minute in resp['results']:
@@ -110,13 +110,20 @@ def add_minute_price_data(ticker, session, connection, cursor):
     cursor.copy_from(csv_file, 'Minute_Prices', sep=',', columns=('ticker', 'timestamp', 'open', 'close', 'high', 'low', 'volume'))
     csv_file.close()
     os.remove('new_minute_price_data.csv')
-    return 'SUCCESSFULLY ADDED MINUTE PRICE DATA FOR' + ' ' + ticker
+    return 'SUCCESSFULLY ADDED MINUTE PRICE DATA FOR {}'.format(ticker)
 
-def add_news_articles(ticker):
-    url = '{}/v1/meta/symbols/{}/news?perpage='
+def add_news_articles(ticker, session, connection, cursor):
+    url = '{}/v1/meta/symbols/{}/news?perpage=50&page=1'.format(POLYGON_BASE_URL, ticker)
     resp = polygon_get_request_multithreaded(url, session)
-
-    if not resp or len(resp['results']) == 0:
-        return None
     
+    with open('new_news_data.csv', 'w+', newline='') as csv_file:
+        write = csv.writer(csv_file)
+        for article in resp:
+            prices = [article['timestamp'], ticker, article['title'], article['url'], article['summary']]
+            write.writerow(prices)
+    csv_file = open('new_news_data.csv', 'r')
+    cursor.copy_from(csv_file, 'News', sep=',', columns=('timestamp', 'ticker', 'title', 'url', 'summary'))
+    csv_file.close()
+    os.remove('new_news_data.csv')
+    return 'SUCCESSFULLY ADDED NEWS DATA FOR {}'.format(ticker)
     

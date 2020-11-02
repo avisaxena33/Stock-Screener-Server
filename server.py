@@ -38,10 +38,11 @@ def add_tracker(ticker):
         cursor.close()
         connection.close()
         return {'error': 'COULD NOT ADD PRICE DATA FOR' + ' ' + ticker}
+    util.add_news_articles(ticker, session, connection, cursor)
     connection.commit()
     cursor.close()
     connection.close()
-    return {'success': 'Successfully added the selected ticker!'}
+    return {'success': 'Successfully added {}!'.format(ticker)}
 
 # Removes a ticker that is being tracked alongisde all the price data for that ticker
 @app.route('/remove_tracker/<string:ticker>')
@@ -56,7 +57,23 @@ def remove_tracker(ticker):
     connection.commit()
     cursor.close()
     connection.close()
-    return {'success': 'Successfully removed the selected ticker!'}
+    return {'success': 'Successfully removed {}!'.format(ticker)}
+
+# Removes a ticker that is being tracked alongisde all the price data for that ticker
+@app.route('/update_news/<string:ticker>')
+def update_news(ticker):
+    ticker = ticker.upper()
+    connection = connect_to_postgres()
+    cursor = connection.cursor()
+    try:
+        cursor.execute("CALL remove_news(%s);", (ticker,))
+    except Exception as e:
+        return {'error': str(e)}
+    add_news_articles(ticker, session, connection, cursor)
+    connection.commit()
+    cursor.close()
+    connection.close()
+    return {'success': 'Successfully removed {}!'.format(ticker)}
 
 # Returns a list of all available tickers to track
 @app.route('/get_all_tickers')
@@ -95,7 +112,7 @@ def get_trackers():
     connection.close()
     return {'tracked': tracked_stocks}
 
-# gets {fundamentals, prices(1d,...,1y), news} for one ticker
+# gets {fundamentals, prices(1d,...,1y), news(5 articles, can change to 50)} for one ticker
 @app.route('/get_data/<string:ticker>')
 def get_ticker_data(ticker):
     connection = connect_to_postgres()
@@ -156,7 +173,7 @@ def get_ticker_data(ticker):
             FROM News
             WHERE ticker = %s
             ORDER BY timestamp DESC
-            LIMIT 3
+            LIMIT 5
             '''
             ,
             [ticker]
@@ -191,12 +208,18 @@ def get_ticker_data(ticker):
             'market_cap': fundamentals[4], 
             'description': fundamentals[5]
         },
-        'news': [
-            {
-                'title':'need implement'
-            },
-        ]
+        'news': list()
     }
+
+    for article in news:
+        temp = {
+            'timestamp': article[0], 
+            'ticker': article[1], 
+            'title': article[2], 
+            'url': article[3], 
+            'summary': article[4]
+        }
+        ticker_data['news'].append(temp)
 
     curday = util.get_current_date_datetime()
     datetime5d = util.get_date_n_days_ago_datetime(7)
@@ -205,21 +228,20 @@ def get_ticker_data(ticker):
     datetime6m = util.get_date_n_days_ago_datetime(183)
 
     for day in daily_prices:
-        temp_datetime = util.d2dt(day[1])
         temp = {
-            'timestamp': temp_datetime,
+            'timestamp': day[1],
             'open': day[2],
             'close': day[3],
             'high': day[4],
             'low': day[5]
         }
-        if temp_datetime > datetime5d:
+        if day[1] > datetime5d:
             ticker_data['prices']['5d'].append(temp)
-        if temp_datetime > datetime1m:
+        if day[1] > datetime1m:
             ticker_data['prices']['1m'].append(temp)
-        if temp_datetime > datetime3m:
+        if day[1] > datetime3m:
             ticker_data['prices']['3m'].append(temp)
-        if temp_datetime > datetime6m:
+        if day[1] > datetime6m:
             ticker_data['prices']['6m'].append(temp)
         ticker_data['prices']['1y'].append(temp)
     

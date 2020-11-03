@@ -7,6 +7,7 @@ import requests
 import concurrent.futures
 import json
 import tweepy
+from apscheduler.schedulers.background import BackgroundScheduler
 
 from config import *
 
@@ -282,5 +283,31 @@ def get_ticker_data(ticker):
     connection.close()
     return ticker_data
 
+def update_tracker_prices_and_tweets():
+    connection = connect_to_postgres()
+    cursor = connection.cursor()
+    try:
+        cursor.execute("SELECT ticker FROM Trackers")
+    except Exception as e:
+        return {'error': str(e)}
+    tickers = [record[0] for record in cursor]
+    
+    for ticker in tickers:
+        try:
+            cursor.execute("CALL remove_old_price_data(%s);", (ticker,))
+            util.add_daily_price_data(ticker, session, connection, cursor)
+            util.add_minute_price_data(ticker, session, connection, cursor)
+            update_tweets(ticker)
+        except Exception as e:
+            return {'error': str(e)}
+    
+    connection.commit()
+    cursor.close()
+    connection.close()
+    return {'success': 'SUCESSFULLY UPDATED ALL PRICE AND TWEET DATA FOR ALL TRACKED TICKERS'}
+    
 if __name__ == '__main__':
+    scheduler = BackgroundScheduler()
+    scheduler.start()
+    scheduler.add_job(update_tracker_prices_and_tweets, trigger='interval', days=1, start_date='2020-11-03 22:00:00')
     application.run()

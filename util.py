@@ -129,7 +129,7 @@ def add_tweets(ticker, tweepy_api, session, connection, cursor):
     with open('new_tweets_data.csv', 'w+', newline='') as csv_file:
         write = csv.writer(csv_file)
         for tweet in searched_tweets:
-            tweet = [tweet['id_str'], tweet['text'].encode('utf-8'), ticker, tweepy_date_to_datetime(tweet['created_at'])]
+            tweet = [TWEET_BASE_URL+tweet['id_str'], tweet['text'].encode('utf-8'), ticker, tweepy_date_to_datetime(tweet['created_at'])]
             write.writerow(tweet)
     csv_file = open('new_tweets_data.csv', 'r')
     cursor.copy_expert("copy Tweets from stdin (format csv)", csv_file)

@@ -16,7 +16,7 @@ auth.set_access_token(TWEEPY_ACCESS_TOKEN, TWEEPY_ACCESS_SECRET)
 tweepy_api = tweepy.API(auth)    
 
 # Flask class reference
-app = Flask(__name__)
+application = Flask(__name__)
 session = requests.Session()
 
 # Attempts to connect to database and returns connection object if successsful
@@ -27,12 +27,12 @@ def connect_to_postgres():
         print("Database connection failed due to {}".format(e))   
 
 # testing flask rest calls
-@app.route("/")
+@application.route("/")
 def hello():
     return 'hello'
 
 # Tracks a new ticker if not already tracked and adds price data
-@app.route('/add_tracker/<string:ticker>')
+@application.route('/add_tracker/<string:ticker>')
 def add_tracker(ticker):
     ticker = ticker.upper()
     connection = connect_to_postgres()
@@ -52,7 +52,7 @@ def add_tracker(ticker):
     return {'success': 'Successfully added {}!'.format(ticker)}
 
 # Removes a ticker that is being tracked alongside all the price and tweets data for that ticker
-@app.route('/remove_tracker/<string:ticker>')
+@application.route('/remove_tracker/<string:ticker>')
 def remove_tracker(ticker):
     ticker = ticker.upper()
     connection = connect_to_postgres()
@@ -67,7 +67,7 @@ def remove_tracker(ticker):
     return {'success': 'Successfully removed {}!'.format(ticker)}
 
 # Replaces old tweets with new tweets for a given ticker
-@app.route('/update_tweets/<string:ticker>')
+@application.route('/update_tweets/<string:ticker>')
 def update_tweets(ticker):
     ticker = ticker.upper()
     connection = connect_to_postgres()
@@ -83,7 +83,7 @@ def update_tweets(ticker):
     return {'success': 'Successfully updated news for {}!'.format(ticker)}  
 
 # Removes all news data for a given ticker
-@app.route('/update_news/<string:ticker>')
+@application.route('/update_news/<string:ticker>')
 def update_news(ticker):
     ticker = ticker.upper()
     connection = connect_to_postgres()
@@ -99,7 +99,7 @@ def update_news(ticker):
     return {'success': 'Successfully updated news for {}!'.format(ticker)}
 
 # Returns a list of all available tickers to track
-@app.route('/get_all_tickers')
+@application.route('/get_all_tickers')
 def get_all_tickers():
     connection = connect_to_postgres()
     cursor = connection.cursor()
@@ -115,7 +115,7 @@ def get_all_tickers():
 '''
 # NEED TO CHANGE THIS TO RETURN THE CORRECT PRICE DATA (HASN'T BEEN DECIDED YET?)
 # Grabs all currently tracked stocks most recently updated price data
-@app.route('/get_trackers')
+@application.route('/get_trackers')
 def get_trackers():
     connection = connect_to_postgres()
     cursor = connection.cursor()
@@ -136,7 +136,7 @@ def get_trackers():
     return {'tracked': tracked_stocks}
 '''
 # gets {fundamentals, prices(1d,...,1y), news(5 articles, can change to 50)} for one ticker
-@app.route('/get_data/<string:ticker>')
+@application.route('/get_data/<string:ticker>')
 def get_ticker_data(ticker):
     connection = connect_to_postgres()
     cursor = connection.cursor()
@@ -281,3 +281,6 @@ def get_ticker_data(ticker):
     cursor.close()
     connection.close()
     return ticker_data
+
+if __name__ == '__main__':
+    application.run()

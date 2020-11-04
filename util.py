@@ -92,6 +92,25 @@ def add_daily_price_data(ticker, session, connection, cursor):
     os.remove('new_daily_price_data.csv')
     return 'SUCCESSFULLY ADDED DAILY PRICE DATA FOR {}'.format(ticker)
 
+# adds current day's closing price data for a ticker (used by background scheduler)
+def add_daily_closing_price(ticker, session, connection, cursor):
+    url = '{}/v2/aggs/ticker/{}/prev?apiKey={}'.format(POLYGON_BASE_URL, ticker, POLYGON_API_KEY) 
+    resp = polygon_get_request_multithreaded(url, session)
+    if not resp or len(resp['results']) == 0:
+        return None
+    with open ('new_daily_price_data.csv', 'w+', newline='') as csv_file:
+        write = csv.writer(csv_file)
+        curr_ticker = resp['ticker']
+        for day in resp['results']:
+            db_timestamp_format = epoch_to_timestamp_format(day['t'])
+            prices = [curr_ticker, db_timestamp_format, day['o'], day['c'], day['h'], day['l'], day['v']]
+            write.writerow(prices)
+    csv_file = open('new_daily_price_data.csv', 'r')
+    cursor.copy_expert("copy Daily_Prices from stdin (format csv)", csv_file)
+    csv_file.close()
+    os.remove('new_daily_price_data.csv')
+    return 'SUCCESSFULLY ADDED CLOSING PRICE DATA TODAY FOR {}'.format(ticker)
+
 # adds minute-by-minute price data (for the last trading day) for a newly tracked ticker
 def add_minute_price_data(ticker, session, connection, cursor):
     url = None

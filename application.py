@@ -286,6 +286,8 @@ def get_ticker_data(ticker):
 def update_tracker_prices_and_tweets():
     connection = connect_to_postgres()
     cursor = connection.cursor()
+    if util.get_current_day_of_week() == 5 or util.get_current_day_of_week() == 6:
+        return {'success': 'NO UPDATES ON WEEKENDS!'}
     try:
         cursor.execute("SELECT ticker FROM Trackers")
     except Exception as e:
@@ -295,7 +297,7 @@ def update_tracker_prices_and_tweets():
     for ticker in tickers:
         try:
             cursor.execute("CALL remove_old_price_data(%s);", (ticker,))
-            util.add_daily_price_data(ticker, session, connection, cursor)
+            util.add_daily_closing_price(ticker, session, connection, cursor)
             util.add_minute_price_data(ticker, session, connection, cursor)
             update_tweets(ticker)
         except Exception as e:
@@ -309,5 +311,5 @@ def update_tracker_prices_and_tweets():
 if __name__ == '__main__':
     scheduler = BackgroundScheduler()
     scheduler.start()
-    scheduler.add_job(update_tracker_prices_and_tweets, trigger='interval', days=1, start_date='2020-11-03 22:00:00')
+    scheduler.add_job(update_tracker_prices_and_tweets, trigger='interval', days=1, start_date='2020-11-04 22:00:00')
     application.run()

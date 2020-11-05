@@ -303,7 +303,7 @@ def update_tracker_prices_and_tweets():
             util.add_minute_price_data(ticker, session, connection, cursor)
             update_tweets(ticker)
         except Exception as e:
-            return {'error': str(e)}
+            print({'error': e})
     
     connection.commit()
     cursor.close()
@@ -313,5 +313,5 @@ def update_tracker_prices_and_tweets():
 if __name__ == '__main__':
     scheduler = BackgroundScheduler()
     scheduler.start()
-    scheduler.add_job(update_tracker_prices_and_tweets, trigger='interval', days=1, start_date='2020-11-04 22:00:00')
+    scheduler.add_job(update_tracker_prices_and_tweets, 'cron', day_of_week='mon-fri', hour=22, minute=0, timezone='America/Chicago')
     application.run()

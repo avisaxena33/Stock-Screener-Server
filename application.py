@@ -8,6 +8,7 @@ import concurrent.futures
 import json
 import tweepy
 from apscheduler.schedulers.background import BackgroundScheduler
+from flask_cors import CORS
 
 from config import *
 
@@ -16,8 +17,9 @@ auth = tweepy.OAuthHandler(TWEEPY_CONSUMER_KEY, TWEEPY_CONSUMER_SECRET)
 auth.set_access_token(TWEEPY_ACCESS_TOKEN, TWEEPY_ACCESS_SECRET)
 tweepy_api = tweepy.API(auth)    
 
-# Flask class reference
+# Flask class reference (allow CORS on all domains)
 application = Flask(__name__)
+CORS(application)
 session = requests.Session()
 
 # Attempts to connect to database and returns connection object if successsful

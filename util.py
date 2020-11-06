@@ -6,7 +6,6 @@ import os
 import datetime
 import pandas as pd
 import tweepy
-import dateutil.parser
 
 from config import *
 
@@ -176,6 +175,7 @@ def add_news_articles(ticker, session, connection, cursor):
     if not resp:
         return None
 
+    # must do this because for whatever reason the search can return duplicate articles
     articles_url_seen = set()
     unique_articles = []
     for article in resp['articles']:

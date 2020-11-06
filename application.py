@@ -207,6 +207,8 @@ def get_ticker_data(ticker):
     except Exception as e:
         return {'error': str(e)}
 
+    news = [record for record in cursor]
+
     try:
         cursor.execute(
             '''

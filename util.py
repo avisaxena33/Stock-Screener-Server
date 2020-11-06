@@ -143,7 +143,7 @@ def add_minute_price_data(ticker, session, connection, cursor):
 def add_tweets(ticker, tweepy_api, session, connection, cursor):
     query = ticker
     max_tweets = 50
-    searched_tweets = [status._json for status in tweepy.Cursor(tweepy_api.search, q=query).items(max_tweets)]
+    searched_tweets = [status._json for status in tweepy.Cursor(tweepy_api.search, q=query, lang='en').items(max_tweets)]
     
     with open('new_tweets_data.csv', 'w+', newline='') as csv_file:
         write = csv.writer(csv_file)

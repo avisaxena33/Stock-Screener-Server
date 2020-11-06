@@ -32,7 +32,7 @@ def connect_to_postgres():
 # testing flask rest calls
 @application.route("/")
 def hello():
-    return 'hello'
+    return 'CS 411 Stock Screener API'
 
 '''
 Tracks a new ticker if not already tracked and adds price data, news, and tweets
@@ -402,8 +402,8 @@ def get_ticker_data(ticker):
     connection.close()
     return ticker_data
 
-# not an endpoint?
-def update_tracker_prices_and_tweets():
+# Called by background scheduler periodically to update daily prices, news, and tweets
+def update_tracker_prices_and_tweets_and_news():
     connection = connect_to_postgres()
     cursor = connection.cursor()
     if util.get_current_day_of_week() == 5 or util.get_current_day_of_week() == 6:
@@ -420,6 +420,7 @@ def update_tracker_prices_and_tweets():
             util.add_daily_closing_price(ticker, session, connection, cursor)
             util.add_minute_price_data(ticker, session, connection, cursor)
             update_tweets(ticker)
+            update_news(ticker)
         except Exception as e:
             print({'error': e})
     
@@ -431,5 +432,5 @@ def update_tracker_prices_and_tweets():
 if __name__ == '__main__':
     scheduler = BackgroundScheduler()
     scheduler.start()
-    scheduler.add_job(update_tracker_prices_and_tweets, 'cron', day_of_week='mon-fri', hour=22, minute=0, timezone='America/Chicago')
+    scheduler.add_job(update_tracker_prices_and_tweets_and_news, 'cron', day_of_week='mon-fri', hour=22, minute=0, timezone='America/Chicago')
     application.run()

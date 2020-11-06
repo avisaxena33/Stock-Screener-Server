@@ -6,12 +6,18 @@ import os
 import datetime
 import pandas as pd
 import tweepy
+import dateutil.parser
 
 from config import *
 
 UTC_MARKET_OPEN = '13:30:00'
 UTC_MARKET_CLOSE = '20:00:00'
 TWEET_BASE_URL = 'https://twitter.com/user/status/'
+
+
+# convert news api org timestamp to datetime
+def news_api_timestamp_to_date(article_date):
+    return datetime.datetime.strptime(article_date, "%Y-%m-%dT%H:%M:%SZ")
 
 # convert date to datetime
 def d2dt(d):
@@ -69,6 +75,13 @@ def read_spy_tickers():
 # helper function for get request multithreading
 def polygon_get_request_multithreaded(url, session):
     resp = session.get(url)
+    if resp.ok:
+        return json.loads(resp.text)
+    return None
+
+# helper function for get request with params dict
+def get_request_with_params(url, session, params):
+    resp = session.get(url, params=params)
     if resp.ok:
         return json.loads(resp.text)
     return None
@@ -158,17 +171,28 @@ def add_tweets(ticker, tweepy_api, session, connection, cursor):
 
 # adds news articles for a newly tracked ticker
 def add_news_articles(ticker, session, connection, cursor):
-    url = '{}/v1/meta/symbols/{}/news?perpage=50&page=1&apiKey={}'.format(POLYGON_BASE_URL, ticker, POLYGON_API_KEY)
+    url = 'https://newsapi.org/v2/everything?language=en&q={}&pageSize=50&page=1&apiKey={}'.format(ticker, NEWS_API_KEY)
     resp = polygon_get_request_multithreaded(url, session)
-    
+    if not resp:
+        return None
+
+    articles_url_seen = set()
+    unique_articles = []
+    for article in resp['articles']:
+        if article['url'] not in articles_url_seen:
+            articles_url_seen.add(article['url'])
+            unique_articles.append(article)
+
     with open('new_news_data.csv', 'w+', newline='') as csv_file:
         write = csv.writer(csv_file)
-        for article in resp:
-            prices = [article['timestamp'], ticker, article['title'], article['url'], article['summary']]
+        for article in unique_articles:
+            prices = [news_api_timestamp_to_date(article['publishedAt']), ticker, article['title'], article['url'], article['description']]
             write.writerow(prices)
     csv_file = open('new_news_data.csv', 'r')
     cursor.copy_expert("copy News from stdin (format csv)", csv_file)
     csv_file.close()
     os.remove('new_news_data.csv')
     return 'SUCCESSFULLY ADDED NEWS DATA FOR {}'.format(ticker)
+
+
     

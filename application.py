@@ -34,7 +34,9 @@ def connect_to_postgres():
 def hello():
     return 'hello'
 
-# Tracks a new ticker if not already tracked and adds price data
+'''
+Tracks a new ticker if not already tracked and adds price data, news, and tweets
+'''
 @application.route('/add_tracker/<string:ticker>')
 def add_tracker(ticker):
     ticker = ticker.upper()
@@ -49,12 +51,15 @@ def add_tracker(ticker):
         connection.close()
         return {'error': 'COULD NOT ADD PRICE DATA FOR' + ' ' + ticker}
     util.add_tweets(ticker, tweepy_api, session, connection, cursor)
+    util.add_news_articles(ticker, session, connection, cursor)
     connection.commit()
     cursor.close()
     connection.close()
     return {'success': 'Successfully added {}!'.format(ticker)}
 
-# Removes a ticker that is being tracked alongside all the price and tweets data for that ticker
+'''
+Removes a ticker that is being tracked alongside all the price, tweets, and news data for that ticker
+'''
 @application.route('/remove_tracker/<string:ticker>')
 def remove_tracker(ticker):
     ticker = ticker.upper()
@@ -69,7 +74,9 @@ def remove_tracker(ticker):
     connection.close()
     return {'success': 'Successfully removed {}!'.format(ticker)}
 
-# Replaces old tweets with new tweets for a given ticker
+'''
+Replaces old tweets with new tweets for a given ticker
+'''
 @application.route('/update_tweets/<string:ticker>')
 def update_tweets(ticker):
     ticker = ticker.upper()
@@ -85,7 +92,9 @@ def update_tweets(ticker):
     connection.close()
     return {'success': 'Successfully updated news for {}!'.format(ticker)}  
 
-# Removes all news data for a given ticker
+'''
+Removes all news data for a given ticker
+'''
 @application.route('/update_news/<string:ticker>')
 def update_news(ticker):
     ticker = ticker.upper()
@@ -101,7 +110,16 @@ def update_news(ticker):
     connection.close()
     return {'success': 'Successfully updated news for {}!'.format(ticker)}
 
-# Returns a list of all available tickers to track
+'''
+Returns a list of all available tickers to track
+
+Returns:
+{
+    'tickers': [
+        'AAPL'
+    ]
+}
+'''
 @application.route('/get_all_tickers')
 def get_all_tickers():
     connection = connect_to_postgres()
@@ -114,16 +132,38 @@ def get_all_tickers():
     connection.commit()
     cursor.close()
     connection.close()
-    return {'success': tickers}
+    return {'tickers': tickers}
+
 '''
-# NEED TO CHANGE THIS TO RETURN THE CORRECT PRICE DATA (HASN'T BEEN DECIDED YET?)
-# Grabs all currently tracked stocks most recently updated price data
+Grabs all currently tracked stocks most recent price data
+
+Returns: 
+{
+    'tracked': [
+        {
+            'ticker': AAPL, 
+            'close': 123.00, 
+            'percentage_change': -1.34
+        }
+    ]
+}
+'''
 @application.route('/get_trackers')
 def get_trackers():
     connection = connect_to_postgres()
     cursor = connection.cursor()
     try:
-        cursor.execute("SELECT * FROM Trackers T1 NATURAL JOIN Minute_Prices P1 NATURAL JOIN Fundamentals F1 WHERE P1.timestamp = (SELECT MAX(P2.timestamp) FROM Minute_Prices P2 WHERE P2.ticker = P1.ticker)")
+        cursor.execute(
+            '''
+            SELECT P1.ticker, P1.close, (P1.close / P1.open - 1) * 100 AS change
+            FROM Daily_Prices P1
+            WHERE P1.timestamp = (
+                SELECT MAX(P2.timestamp)
+                FROM Daily_Prices P2
+                WHERE P2.ticker = P1.ticker
+            )
+            '''
+        )
     except Exception as e:
         return {'error': str(e)}
     tracked_raw_data = [record for record in cursor]
@@ -131,14 +171,64 @@ def get_trackers():
         return {'error': 'No stocks are currently being tracked'}
     tracked_stocks = []
     for stock in tracked_raw_data:
-        curr_stock_map = {'ticker': stock[0], 'timestamp': stock[1], 'open': stock[2], 'close': stock[3], 'high': stock[4], 'low': stock[5], 'volume': stock[6],
-        'company_name': stock[7], 'industry': stock[8], 'sector': stock[9], 'market_cap': stock[10], 'description': stock[11]}
-        tracked_stocks.append(curr_stock_map)
+        temp = {
+            'ticker': stock[0], 
+            'close': stock[1], 
+            'percentage_change': stock[2]
+        }
+        tracked_stocks.append(temp)
     cursor.close()
     connection.close()
     return {'tracked': tracked_stocks}
+
 '''
-# gets {fundamentals, prices(1d,...,1y), news(5 articles, can change to 50)} for one ticker
+gets all data for a specified ticker page
+
+{
+    'ticker': 'AAPL',
+    'prices': {
+        '1d': [
+            {
+                'timestamp': 123,
+                'open': 123,
+                'close': 123,
+                'high': 123,
+                'low': 123
+            }, ...
+        ],
+        '5d': [...],
+        '1m': [...],
+        '3m': [...],
+        '6m': [...],
+        '1y': [...]
+    },
+    'fundamentals': {
+        'volume': 123,
+        'company_name': 123, 
+        'industry': 123, 
+        'sector': 123, 
+        'market_cap': 123, 
+        'description': 123
+    },
+    'news': [
+        {
+            'timestamp': 123, 
+            'ticker': 123, 
+            'title': 123, 
+            'url': 123, 
+            'summary': 123
+        }
+    ],
+    'tweets': [
+        {
+            'url': 123, 
+            'tweet': 123, 
+            'ticker': 123, 
+            'timestamp': 123,
+        }
+    ]
+}
+'''
 @application.route('/get_data/<string:ticker>')
 def get_ticker_data(ticker):
     connection = connect_to_postgres()
@@ -312,6 +402,7 @@ def get_ticker_data(ticker):
     connection.close()
     return ticker_data
 
+# not an endpoint?
 def update_tracker_prices_and_tweets():
     connection = connect_to_postgres()
     cursor = connection.cursor()

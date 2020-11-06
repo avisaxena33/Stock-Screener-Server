@@ -207,7 +207,22 @@ def get_ticker_data(ticker):
     except Exception as e:
         return {'error': str(e)}
 
-    news = [record for record in cursor]
+    try:
+        cursor.execute(
+            '''
+            SELECT *
+            FROM Tweets
+            WHERE ticker = %s
+            ORDER BY timestamp DESC
+            LIMIT 50
+            '''
+            ,
+            [ticker]
+        )
+    except Exception as e:
+        return {'error': str(e)}
+
+    tweets = [record for record in cursor]
 
     if not fundamentals:
         return {'error': 'No fundamental data found'}
@@ -234,7 +249,8 @@ def get_ticker_data(ticker):
             'market_cap': fundamentals[4], 
             'description': fundamentals[5]
         },
-        'news': list()
+        'news': list(),
+        'tweets': list()
     }
 
     for article in news:
@@ -247,6 +263,15 @@ def get_ticker_data(ticker):
         }
         ticker_data['news'].append(temp)
 
+    for tweet in tweets:
+        temp = {
+            'url': tweet[0], 
+            'tweet': tweet[1], 
+            'ticker': tweet[2], 
+            'timestamp': tweet[3],
+        }
+        ticker_data['tweets'].append(temp)
+    
     curday = util.get_current_date_datetime()
     datetime5d = util.get_date_n_days_ago_datetime(7)
     datetime1m = util.get_date_n_days_ago_datetime(31)

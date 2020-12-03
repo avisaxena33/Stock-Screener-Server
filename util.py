@@ -120,12 +120,21 @@ def polygon_get_request_multithreaded(url, session):
 def user_query_to_postfix(query):
     # replace query with operators
     rep_dict = {
-        'std': 's',
-        'mean': 'a',
-        'and': '&',
-        'or': '|',
+        'std': ' s ',
+        'mean': ' a ',
+        'and': ' & ',
+        'or': ' | ',
+        '<': ' < ',
+        '>': ' > ',
+        '<=': ' <= ',
+        '>=': ' >= ',
+        '==': ' == ',
+        '+': ' + ',
+        '-': ' - ',
+        '*': ' * ',
+        '/': ' / ',
         '[': '',
-        ']': '',
+        ']': ' ',
         '(': ' ( ',
         ')': ' ) '
     }

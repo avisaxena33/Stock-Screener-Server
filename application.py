@@ -123,7 +123,7 @@ def remove_all_trackers():
 Replaces old tweets with new tweets for a given ticker
 '''
 @application.route('/update_tweets/<string:ticker>')
-def update_tweets(ticker):
+def update_tweets(ticker, company_name):
     ticker = ticker.upper()
     connection = util.connect_to_postgres()
     cursor = connection.cursor()
@@ -131,7 +131,7 @@ def update_tweets(ticker):
         cursor.execute("CALL remove_tweets(%s);", (ticker,))
     except Exception as e:
         return {'error': str(e)}
-    util.add_tweets(ticker, TWEEPY_API, session, connection, cursor)
+    util.add_tweets(ticker, company_name, TWEEPY_API, session, connection, cursor)
     connection.commit()
     cursor.close()
     connection.close()
@@ -355,7 +355,7 @@ def get_ticker_data(ticker):
             FROM News
             WHERE ticker = %s
             ORDER BY timestamp DESC
-            LIMIT 5
+            LIMIT 20
             '''
             ,
             [ticker]
@@ -839,6 +839,7 @@ def update_tracker_prices_and_tweets_and_news():
 
     print('in scheduler got all tickers')
     for ticker in tickers:
+        fundamentals = {}
         connection = util.connect_to_postgres()
         cursor = connection.cursor()
         try:
@@ -852,6 +853,11 @@ def update_tracker_prices_and_tweets_and_news():
         except Exception as e:
             print({'error': e})
             connection.rollback()
+        try:
+            cursor.execute("SELECT * FROM Fundamentals WHERE ticker = %s", (ticker,))
+        except Exception as e:
+            return {'error': str(e)}
+        fundamentals = cursor.fetchone()
         connection.commit()
         cursor.close()
         connection.close()
@@ -859,6 +865,7 @@ def update_tracker_prices_and_tweets_and_news():
         util.add_daily_closing_price(ticker, session)
         util.add_daily_minute_price(ticker, session)
         update_news(ticker)
+        update_tweets(ticker, fundamentals[1])
 
     print('in scheduler successfully updated all data possible')
     return {'success': 'SUCESSFULLY UPDATED ALL PRICE AND TWEET DATA FOR ALL TRACKED TICKERS'}

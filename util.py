@@ -439,7 +439,11 @@ def add_daily_minute_price(ticker, session):
 def add_tweets(ticker, company_name, tweepy_api, session, connection, cursor):
     query = company_name
     max_tweets = 50
-    searched_tweets = [status._json for status in tweepy.Cursor(tweepy_api.search, q=query, lang='en').items(max_tweets)]
+    searched_tweets = []
+    try:
+        searched_tweets = [status._json for status in tweepy.Cursor(tweepy_api.search, q=query, lang='en').items(max_tweets)]
+    except Exception as e:
+        return str(e)
     
     with open('new_tweets_data.csv', 'w+', newline='') as csv_file:
         write = csv.writer(csv_file)

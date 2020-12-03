@@ -436,8 +436,8 @@ def add_daily_minute_price(ticker, session):
     return 'SUCCESSFULLY ADDED MINUTE PRICE DATA FOR {}'.format(ticker)
 
 # adds tweets for a newly tracked ticker
-def add_tweets(ticker, tweepy_api, session, connection, cursor):
-    query = ticker
+def add_tweets(ticker, company_name, tweepy_api, session, connection, cursor):
+    query = company_name
     max_tweets = 50
     searched_tweets = [status._json for status in tweepy.Cursor(tweepy_api.search, q=query, lang='en').items(max_tweets)]
     

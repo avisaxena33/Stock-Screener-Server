@@ -55,13 +55,15 @@ def add_tracker(ticker):
         cursor.close()
         connection.close()
         return {'error': 'COULD NOT ADD PRICE DATA FOR' + ' ' + ticker}
-    util.add_tweets(ticker, TWEEPY_API, session, connection, cursor)
-    util.add_news_articles(ticker, session, connection, cursor)
+
     try:
         cursor.execute("SELECT * FROM Fundamentals WHERE ticker = %s", (ticker,))
     except Exception as e:
         return {'error': str(e)}
     fundamentals = cursor.fetchone()
+
+    util.add_tweets(ticker, fundamentals[1], TWEEPY_API, session, connection, cursor)
+    util.add_news_articles(ticker, session, connection, cursor)
 
     col_ref = mongo_db['Live_Stock_Prices']
     daily_prices = util.get_past_week_prices_mongo(ticker, session)

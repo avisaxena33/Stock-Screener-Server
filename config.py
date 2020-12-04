@@ -68,7 +68,7 @@ handler.setFormatter(formatter)
 LOGGER.addHandler(handler)
 
 # Create logger (sockets)
-LOGGER_SOCKET = logging.getLogger(__name__)
+LOGGER_SOCKET = logging.getLogger('SOCKET')
 LOGGER_SOCKET.setLevel(logging.INFO)
 
 # Handler 

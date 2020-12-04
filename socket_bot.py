@@ -12,7 +12,7 @@ import logging.handlers
 DATA_SOCKET = 'wss://socket.polygon.io/stocks'
 
 def on_open(ws):
-    LOGGER.info('opening connection')
+    LOGGER_SOCKET.info('opening connection')
     auth_data = {
         'action': 'auth',
         'params': POLYGON_API_KEY
@@ -21,20 +21,20 @@ def on_open(ws):
 
 def on_message(ws, message):
     message = json.loads(message)[0]
-    print(message)
+    #print(message)
     if message['ev'] == 'AM':
         process_price_data(message)
         pass
     elif message['ev'] == 'status':
         if message['status'] != 'auth_success':
             return
-        # LOGGER.info('status message: ' + message['message'])
+        LOGGER_SOCKET.info('status message: ' + message['message'])
         connection = util.connect_to_postgres()
         cursor = connection.cursor()
         try:
             cursor.execute('SELECT ticker FROM Trackers')
         except Exception as e:
-            LOGGER.error('error :' + str(e))
+            LOGGER_SOCKET.error('error :' + str(e))
         all_tickers = ['AM.'+record[0] for record in cursor]
 
         listen_message = {
@@ -43,18 +43,18 @@ def on_message(ws, message):
         }
         ws.send(json.dumps(listen_message))
     else:
-        LOGGER.info('unexpected message: ' + message)
+        LOGGER_SOCKET.info('unexpected message: ' + message)
 
 def on_close(ws):
-    LOGGER.info('connection closed, restarting connection')
+    LOGGER_SOCKET.info('connection closed, restarting connection')
     run_bot()
 
 def on_error(ws, error):
-    LOGGER.error('received error: ' + str(error))
+    LOGGER_SOCKET.error('received error: ' + str(error))
 
 def process_price_data(prices):
     col_ref = mongo_db['Live_Stock_Prices']
-    print(util.get_ema_idx(prices['s']))
+    #print(util.get_ema_idx(prices['s']))
     if prices and util.within_trading_hours(prices['s']):
         timestamp = datetime.datetime.strptime(util.epoch_to_timestamp_format(prices['s']), '%Y-%m-%d %H:%M:%S')
         new_price = {'volume': prices['v'], 'open': prices['o'], 'close': prices['c'], 'high': prices['h'], 'low': prices['l'], 'timestamp': timestamp}
@@ -76,7 +76,7 @@ def process_price_data(prices):
             util.send_volume_spike_notification(message)
 
 def run_bot():
-    LOGGER.info('WE IN THE BOT FIRST LINE')
+    LOGGER_SOCKET.info('WE IN THE BOT FIRST LINE')
     #websocket.enableTrace(True)
     ws = websocket.WebSocketApp(
         DATA_SOCKET,
@@ -85,12 +85,12 @@ def run_bot():
         on_close=on_close,
         on_error=on_error
     )
-    LOGGER.info('WE IN THE RUN_BOT ...')
+    LOGGER_SOCKET.info('WE IN THE RUN_BOT ...')
     ws.run_forever()
 
 # updates aggregate volume data for a tracked stock every time new minute data is received
 def on_minute(new_minute_data):
-    LOGGER.info('IN ON_MINUTE BOIS')
+    LOGGER_SOCKET.info('IN ON_MINUTE BOIS')
     curr_ticker = new_minute_data['sym']
     curr_vol = new_minute_data['av']
 
@@ -100,7 +100,7 @@ def on_minute(new_minute_data):
     ema_volume = doc_data['ema_volume']
     minute_volume = doc_data['minute_volume']
 
-    LOGGER.info('WE LOGGING MINUTE_VOL BOISSS')
+    LOGGER_SOCKET.info('WE LOGGING MINUTE_VOL BOISSS')
 
     idx = util.get_ema_idx(new_minute_data['s'])
     if idx < 0 or idx >= 391:
@@ -114,7 +114,7 @@ def on_minute(new_minute_data):
     # if prev_ema[idx] < 0:
     #     prev_ema[idx] = ema_volume[idx]
 
-    LOGGER.info('WE UPDATING MONGODB VOLUME BOIIISSSS')
+    LOGGER_SOCKET.info('WE UPDATING MONGODB VOLUME BOIIISSSS')
     col_ref.update_one({'ticker': curr_ticker}, {'$set': {'ema_volume': ema_volume, 'minute_volume': minute_volume, 'prev_ema': prev_ema } } )
 
 # checks ema volume spike after every new aggregate minute data for a stock is received

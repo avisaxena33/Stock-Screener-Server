@@ -49,7 +49,7 @@ GMAIL_USER_2 = config('GMAIL_USER_2')
 GMAIL_USER_3 = config('GMAIL_USER_3')
 GMAIL_ROOT_PASS = config('GMAIL_ROOT_PASS')
 
-# Create logger
+# Create logger (main logger)
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.INFO)
 
@@ -66,3 +66,18 @@ handler.setFormatter(formatter)
 
 # add Handler to Logger
 LOGGER.addHandler(handler)
+
+# Create logger (sockets)
+LOGGER_SOCKET = logging.getLogger(__name__)
+LOGGER_SOCKET.setLevel(logging.INFO)
+
+# Handler 
+LOG_FILE_SOCKET = '/tmp/sample-app-2.log'
+handler_socket = logging.handlers.RotatingFileHandler(LOG_FILE_SOCKET, maxBytes=1048576, backupCount=5)
+handler_socket.setLevel(logging.INFO)
+
+# Add Formatter to Handler
+handler_socket.setFormatter(formatter)
+
+# add Handler to Logger
+LOGGER_SOCKET.addHandler(handler)

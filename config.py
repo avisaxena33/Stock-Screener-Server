@@ -80,4 +80,4 @@ handler_socket.setLevel(logging.INFO)
 handler_socket.setFormatter(formatter)
 
 # add Handler to Logger
-LOGGER_SOCKET.addHandler(handler)
+LOGGER_SOCKET.addHandler(handler_socket)

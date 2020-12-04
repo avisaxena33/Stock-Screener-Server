@@ -50,7 +50,7 @@ GMAIL_USER_3 = config('GMAIL_USER_3')
 GMAIL_ROOT_PASS = config('GMAIL_ROOT_PASS')
 
 # Create logger (main logger)
-LOGGER = logging.getLogger(__name__)
+LOGGER = logging.getLogger('REGULAR')
 LOGGER.setLevel(logging.INFO)
 
 # Handler 

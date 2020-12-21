@@ -1,5 +1,6 @@
 # Stock-Screener-Server
 CS411 Final Project for tracking tickers and identifying unusual stock volume.
+**NOTE: The AWS resources are now terminated**
 
 **Stack:**
 * Python
